@@ -1,0 +1,80 @@
+library(tidyverse)
+library(ggpubr)
+ftx <- "https://raw.githubusercontent.com/sphill12/Project_3_Data_607/main/FTX_coin_data.csv"
+crypto_df <- read_csv(ftx)
+crypto_df$...1 <- NULL
+
+glimpse(crypto_df)
+summary(crypto_df)
+
+# The coins in the FTX fund include... 
+coins <- unique(crypto_df$coin)
+coins
+length(unique(crypto_df$coin))
+
+# Trends in closing prices since 2020
+# Split the coins up into two groups so it would like nicer on the facet grid
+
+# Group 1 
+crypto_df %>% filter(timestamp >= "2020-01-01" & coin %in% c(coins[1:9])) %>%
+  ggplot(aes(x = timestamp,
+             y = close, 
+             color = coin)) +
+  geom_line(linewidth = 0.35) + 
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Closing Price") + 
+  xlab("Date") +
+  ylab("Closing price (USD)") +
+  theme(legend.position = "none")
+
+# Group 2 
+crypto_df %>% filter(timestamp >= "2020-01-01" & coin %in% c(coins[10:17])) %>%
+  ggplot(aes(x = timestamp,
+             y = close, 
+             color = coin)) +
+  geom_line() + 
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Closing Price") + 
+  xlab("Date") +
+  ylab("Closing price (USD)") +
+  theme(legend.position = "none")
+
+
+# Looking at market cap trends from 2022-08-01 when it seemed like the beginning
+# of reports that something shady was happening. Link below has an interesting time line 
+# breakdown: 
+# https://www.reuters.com/markets/currencies/rise-fall-crypto-exchange-ftx-2022-11-10/
+
+
+crypto_df %>% filter(timestamp >= "2022-08-01" & coin %in% c(coins[1:8])) %>%
+  ggplot(aes(x = timestamp,
+             y = marketCap, color = coin)) +
+  geom_line() + 
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Market Cap. Price") + 
+  xlab("Date") +
+  ylab("Market Cap (USD)") +
+  theme(legend.position = "none")
+
+crypto_df %>% filter(timestamp >= "2022-08-01" & coin %in% c(coins[9:17])) %>%
+  ggplot(aes(x = timestamp,
+             y = marketCap, color = coin)) +
+  geom_line() + 
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Market Cap. Price") + 
+  xlab("Date") +
+  ylab("Market Cap (USD)") +
+  theme(legend.position = "none")
+
+# OTHER THOUGHTS...
+# Relationships between open and close prices
+
+# Distribution of the closing stock price 
+
+# High/Low difference shows how volatile a stock was day to day 
+
+# Relationship between high and low differences and volume
+
+# Trends in difference between opening and closing
+
+# Maybe look at average daily volume (number of shares traded in a given period)
