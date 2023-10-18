@@ -1,0 +1,43 @@
+---
+title: "Layer 1  Coins"
+author: "Steve Phillips"
+date: "2023-10-18"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(readr)
+library(tidyverse)
+library(stringr)
+library(dplyr)
+```
+```{r}
+layer_one <- data.frame()
+```
+
+```{r}
+files <- list.files()
+```
+
+```{r}
+for(file in files){
+  temp <- read_csv2(file)
+  temp <- temp %>% mutate(coin = substr(file,1,nchar(file)-28))
+  layer_one <- rbind(layer_one, temp)
+}
+```
+```{r}
+layer_one
+```
+```{r}
+write.csv(layer_one, "layer_one_data.csv")
+```
+```{r}
+summary(layer_one)
+```
+
+
+

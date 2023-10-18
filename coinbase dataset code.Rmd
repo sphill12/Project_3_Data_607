@@ -1,0 +1,74 @@
+---
+title: "Coinbase Dataset"
+author: "Steve Phillips"
+date: "2023-10-17"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(stringr)
+library(dplyr)
+library(shiny)
+```
+
+```{r}
+coinbase <- data.frame()
+```
+```{r}
+files <- list.files()
+```
+```{r}
+for (file in files){
+  temp <- read_csv2(file)
+  temp <- temp %>% mutate(coin = substr(file,1,nchar(file)-28))
+  coinbase <- rbind(coinbase, temp)
+}
+```
+
+```{r}
+coinbase
+```
+```{r}
+write.csv(coinbase,"Coinbase_coin_data.csv")
+```
+
+```{r}
+coinbase[,1:4] <- lapply(coinbase[,1:4], as.numeric)
+```
+```{r}
+coinbase <- coinbase %>% group_by %>% mutate(percent_change = (((close - open)/open)*100))
+```
+
+
+
+```{r}
+coinbase
+```
+```{r}
+summary(coinbase)
+```
+
+```{r}
+coinbase %>% group_by(coin) %>% ggplot(aes(x = timestamp, y = percent_change, color = coin)) + geom_point() + ylim(-400, 400)
+```
+```{r}
+coinbase %>% 
+      group_by(coin) %>% 
+      mutate(coin_size = ifelse(mean(marketCap) > 91137294532,"high marketcap", "low marketcap")) %>%
+      filter(coin_size == "high marketcap") %>%
+      ggplot(aes(x = timestamp, y = percent_change, color = coin)) + 
+          geom_point() + 
+          ylim(-200, 200)
+```
+
+
+
+
+
+

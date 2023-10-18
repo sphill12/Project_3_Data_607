@@ -1,0 +1,48 @@
+---
+title: "Crypto Datasets"
+author: "Steve Phillips"
+date: "2023-10-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+library(tidyverse)
+library(stringr)
+library(dplyr)
+```
+
+
+```{r}
+ftx <- data.frame()
+```
+```{r}
+print(oxy, n = 150)
+```
+```{r}
+files <- list.files()
+files
+
+```
+```{r}
+for (file in files){
+  temp <- read_csv2(file)
+  temp <- temp %>% mutate(coin = substr(file,1,nchar(file)-8))
+  ftx <- rbind(ftx, temp)
+}
+```
+```{r}
+ftx
+```
+```{r}
+write.csv(ftx,"FTX Coin Data.csv")
+```
+
+
+
+
+
