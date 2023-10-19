@@ -1,0 +1,39 @@
+---
+title: "607-Group-Project-3"
+author: "Steve Phillips, Dirk Hartog, Lwin Shwe"
+date: "2023-10-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r load-package}
+library(RCurl)
+library(kableExtra)
+library(DBI)
+library(RMySQL)
+library(RODBC)
+conn <- dbConnect(MySQL(), user= "root", password = "M2max2023", dbname='MyDB1', host='localhost', port=3306)
+```
+
+### Load realational database from MySQL Workbench to R
+
+```{r DBMS}
+library(dplyr)
+cryto_dbms <- dbGetQuery(conn , 'select CryptoAbb, CryptoDesc, opening, highest, lowest, closing, volume, marketCap, theDate 
+from DailyPrices
+left join CryptoList
+on DailyPrices.CryptoAbb = CryptoList.CryptoName ')
+glimpse(cryto_dbms)
+# Export the data frame to a CSV file local directory
+write.csv(cryto_dbms, "DATA 607 Group Project3.csv", row.names = FALSE)
+#Read the .csv file 
+cryptocurrencies <- read.csv("DATA 607 Group Project3.csv")
+cryptocurrencies
+
+```
+
+
