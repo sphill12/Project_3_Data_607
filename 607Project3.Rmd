@@ -23,6 +23,7 @@ conn <- dbConnect(MySQL(), user= "root", password = "M2max2023", dbname='MyDB1',
 
 ```{r DBMS}
 library(dplyr)
+library(ggplot2)
 cryto_dbms <- dbGetQuery(conn , 'select CryptoAbb, CryptoDesc, opening, highest, lowest, closing, volume, marketCap, theDate 
 from DailyPrices
 left join CryptoList
@@ -32,8 +33,130 @@ glimpse(cryto_dbms)
 write.csv(cryto_dbms, "DATA 607 Group Project3.csv", row.names = FALSE)
 #Read the .csv file 
 cryptocurrencies <- read.csv("DATA 607 Group Project3.csv")
-cryptocurrencies
+head(cryptocurrencies)
 
 ```
 
+```{r}
+cryto_dbms %>%
+count(CryptoDesc) # count number of coins types 
+summary(cryto_dbms)
+filter(cryptocurrencies,CryptoAbb == "BTC", theDate == "2023-09-13")
 
+cryptocurrencies %>%
+  group_by(CryptoAbb)  %>%
+  ggplot(aes(x = theDate, y = marketCap, color = "red")) +
+  geom_line() +  # Use geom_line() for a line graph
+  ylim(-200, 200) +
+  facet_wrap(~CryptoAbb)
+
+
+cryptocurrencies %>%
+  group_by(CryptoDesc) %>%
+  mutate(coin_size = ifelse(mean(marketCap) > 517141000000, "high marketcap", "low marketcap")) %>%
+  filter(coin_size == "high marketcap") %>%
+  ggplot(aes(x = CryptoAbb, y = volume, color = "blue")) +  # Color should be a character string, e.g., "blue"
+  geom_point() +
+  ylim(-200, 200)
+
+
+# Create the line graph
+ggplot(cryptocurrencies, aes(x = CryptoAbb, y = volume, group = CryptoAbb)) +
+  geom_line() +
+  labs(x = "CryptoAbb", y = "volume") +
+  theme_minimal()
+
+
+```
+```{r cleaning}
+
+# Checking for missing values
+missing_values <- sapply(cryptocurrencies, function(x) sum(is.na(x)))
+
+# Display the columns with missing values
+columns_with_missing <- names(missing_values[missing_values > 0])
+print(columns_with_missing)
+
+# Display the number of missing values for each column
+print(missing_values)
+
+# Create box plots for numeric columns that you want to check
+numeric_columns <- cryptocurrencies %>%
+  select(opening, highest, lowest, closing, volume, marketCap)
+
+# Create a box plot for each numeric column
+for (col in names(numeric_columns)) {
+  p <- ggplot(cryptocurrencies, aes(y = !!sym(col))) +
+    geom_boxplot() +
+    labs(title = paste("Box Plot of", col))
+  print(p)
+}
+
+```
+
+```{r transformation}
+#Standardizing Dates
+# Eg. Converting a date column to a standard format
+cryptocurrencies$theDate <- as.Date(cryptocurrencies$theDate, format = "%Y-%m-%d")
+head(cryptocurrencies$theDate)
+#Scaling Numerical Values
+# Eg. Scaling the "volume" column
+cryptocurrencies$volume <- scale(cryptocurrencies$volume)
+head(cryptocurrencies$volume)
+
+#Aggregating Data
+# Example: Aggregating data by CryptoDesc and calculating the mean marketCap
+aggregated_data <- cryptocurrencies %>%
+  group_by(CryptoDesc) %>%
+  summarize(mean_marketCap = mean(marketCap))
+aggregated_data
+#Creating Time Series Features:
+# Example: Creating a lag feature for the "marketCap" column
+cryptocurrencies <- cryptocurrencies %>%
+  mutate(lagged_marketCap = lag(marketCap))
+cryptocurrencies
+
+#Text Data Processing
+library(tokenizers)
+# Example: Tokenizing text data in the "CryptoDesc" column
+cryptocurrencies$CryptoDesc <- unlist(tokenize_words(cryptocurrencies$CryptoDesc))
+
+```
+
+```{r visualization}
+#Line Graph for Cryptocurrency Prices Over Time:
+
+ggplot(data = cryptocurrencies, aes(x = theDate, y = closing, color = CryptoDesc)) +
+  geom_line() +
+  labs(title = "Cryptocurrency Prices Over Time", x = "Date", y = "Closing Price")
+
+#Bar Chart to Compare Cryptocurrency Trading Volumes:
+ggplot(data = cryptocurrencies, aes(x = CryptoAbb, y = volume)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Cryptocurrency Trading Volumes", x = "Cryptocurrency Abbreviation", y = "Volume")
+
+#Scatter Plot for Relationship Between market capitalization vs. volume
+ggplot(data = cryptocurrencies, aes(x = marketCap, y = volume)) +
+  geom_point() +
+  labs(title = "Market Cap vs. Trading Volume", x = "Market Cap", y = "Volume")
+
+#Box Plot for Outlier Detection of market capitalization:
+
+ggplot(data = cryptocurrencies, aes(x = CryptoDesc, y = marketCap)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Market Capitalization by Cryptocurrency", x = "Cryptocurrency", y = "Market Cap")
+
+#Time Series Plots:
+#Create time series plots to visualize the behavior of a single cryptocurrency over time.
+# Time series plot for a single cryptocurrency
+ggplot(data = cryptocurrencies[cryptocurrencies$CryptoAbb == "BTC", ], aes(x = theDate, y = closing)) +
+  geom_line() +
+  labs(title = "Bitcoin (BTC) Price Over Time", x = "Date", y = "Closing Price")
+#Histograms and Density Plots:
+#Visualize the distribution of a single numerical variable using histograms or density plots
+# Histogram of market capitalization
+ggplot(data = cryptocurrencies, aes(x = marketCap)) +
+  geom_histogram() +
+  labs(title = "Distribution of Market Capitalization", x = "Market Cap", y = "Frequency")
+
+```
