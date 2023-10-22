@@ -1,0 +1,232 @@
+---
+title: "607Project3_analysis"
+author: "Dirk Hartog"
+date: "2023-10-22"
+output: pdf_document
+---
+
+```{r message = FALSE}
+library(tidyverse)
+library(ggpubr)
+library(dplyr)
+```
+
+## FTX DATA ANALYSIS
+
+In this portion we were interested in investigating the impact the collapse of FTX had on any of the coins that were part of the FTX exchange. Below is a link to brief timeline of the rise and fall of FTX. 
+
+**[FTX article]("https://www.reuters.com/markets/currencies/rise-fall-crypto-exchange-ftx-2022-11-10/")**
+
+First we will start by reading in the FTX data set and looking at some summary information. 
+```{r read in FTX data, message = FALSE}
+ftxurl <- "https://raw.githubusercontent.com/sphill12/Project_3_Data_607/main/ftx_daily_data.csv"
+ftx <- read_csv(ftxurl)
+ftx$...1 <- NULL
+summary(ftx)
+```
+
+There are `r length(unique(ftx$coin))` coins in the FTX exchange which include the following: 
+
+```{r ftx coins}
+ftxcoins <- unique(ftx$coin)
+ftxcoins
+```
+
+Since there are many coins in this data set they were also split up by marketcap size and a new column called coin_size was created. Those under the median Market cap value are labeled "Low marketcap" and those above the median value are labeled "High marketcap". We can also see which coins fell into each category and how many observations of daily prices we have of each coin. 
+
+```{r categorizing market cap}
+median(ftx$marketcap)
+
+ftx <- ftx %>% group_by(coin) %>% 
+  mutate(coin_size = ifelse(mean(marketcap) > 5334422528,"high marketcap", "low marketcap")) 
+
+ftx %>% group_by(coin_size) %>% count(coin)
+```
+
+We also want to add a numeric column that takes the value from calculating the percent change in the closing price and opening price to use later in our exploratory data analysis. 
+
+```{r percent change}
+ftx <- ftx %>% group_by(coin) %>% 
+  mutate(pct_change = round(((close - open)/open)*100, 2))
+```
+
+## Exploratory Data Analysis
+
+### 1. To get an initial idea of how the coins did over time we can visualize the coins closing price. Below, the coins are grouped by the coin size for comparison using the facet_grid fucntion in ggplot2. 
+
+```{r high market cap and closing}
+ftx %>% filter(coin_size == "high marketcap") %>% 
+  ggplot(aes(x = date,
+             y = close, 
+             color = coin)) +
+  geom_line(linewidth = 0.5) + 
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Closing Price (high marketcap)") + 
+  xlab("Date") +
+  ylab("Closing price (USD)") +
+  theme(legend.position = "none", 
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black",
+                                  size=14))
+```
+
+```{r low market cap and closing}
+ftx %>% filter(coin_size == "low marketcap") %>%
+  ggplot(aes(x = date,
+             y = close, 
+             color = coin)) +
+  geom_line(linewidth = 0.5) +
+  facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Trends in Closing Price (low marektcap)") + 
+  xlab("Date") +
+  ylab("Closing price (USD)") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black",
+                                  size=14))
+```
+
+In both groups we see varied closing prices with some closing prices fluctuating between 20,000 and 60,000 dollars ("BTC") and some between 0 and 9 dollars ("XRP"). There is also some interesting activity in the trend of the closing prices between 2021 and 2022 which correlates to the height of when FTX received much of it's funding. 
+
+### 2. Next we were interested in the percent changes overtime to you can gain a better understanding of their volatility and risk. Again we looked at the coins in FTX based on the high and low market cap category we created earlier. 
+
+```{r percent changes high mc}
+ftx %>% filter(coin_size == "high marketcap") %>% 
+  ggplot(aes(x = date, y = pct_change, color = coin)) +
+  geom_line() +
+  facet_grid(coin~., scales = "free_y") +
+  ggtitle("Percent Change Overtime (high marketcap)") + 
+  xlab("Date") +
+  ylab("Percent Change") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black",
+                                  size=14))
+```
+
+```{r percent changes low mc}
+ftx %>% filter(coin_size == "low marketcap") %>% 
+  ggplot(aes(x = date, y = pct_change, color = coin)) +
+  geom_line() +
+  facet_grid(coin~., scales = "free_y") +
+  ggtitle("Percent Change Overtime (low marketcap)") + 
+  xlab("Date") +
+  ylab("Percent Change") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black",
+                                  size=14))
+```
+
+In each group there are some obvious spikes in the coins and this would be something to look at further to see if any coins follow the generally trend of the market and if not then is there certain coins that follow others.
+
+### 3. Looking back at the closign prices from above. We wanted to zero in on the coins whose closing prices trended downward.
+
+```{r closing price, message = FALSE}
+vertical_line_date <- as.Date("2022-11-02")
+
+ftx %>% filter(coin %in% c("ALEPH", "FIDA", "FTT", "MAPS", 
+                           "MSOL","OXY", "SOL", "SRM")) %>%
+  ggplot(aes(x = as.Date(date), y = close, color = coin)) +
+  geom_line() +
+  geom_vline(aes(xintercept = vertical_line_date), 
+             linetype = 2, 
+             color = "black", 
+             size = 0.75) +
+  #facet_grid(coin~., scales = "free_y") + 
+  ggtitle("Closing Price (After FTX Collapse)") + 
+  xlab("Date") +
+  ylab("Closing Price (USD)") +
+  theme(axis.title.x = element_text(color="black",size=10),
+                axis.title.y = element_text(color="black", size=10),
+                axis.text.x = element_text(size=6),
+                axis.text.y = element_text(size=6),
+                plot.title = element_text(color = "black",
+                                          size=14))
+```
+In this graphic we are looking at 8 coins in the FTX exchange. All but one ("SOL") were categorized in the low market cap coins. The dashed line in the graph is set at November 2nd, 2022, which has been documented as the catalyst to FTX finally file for bankruptcy.
+
+### 4. Extending this added layer of insight to the data, we can better visualize any impact the collapse of FTX had on the volume of trades within each coin. 
+
+```{r volume high mc}
+ftx %>% filter(coin_size == "high marketcap") %>% 
+  ggplot(aes(x = as.Date(date), y = volume)) + 
+  geom_line() +
+  facet_grid(coin~., scales = "free_y") + 
+  geom_vline(aes(xintercept = vertical_line_date), 
+             linetype = 2, 
+             color = "red", 
+             size = 0.5) +
+  ggtitle("Trends in Yearly Trading Volume (high marketcap)") + 
+  xlab("Date") +
+  ylab("Volume") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black", size=14))
+```
+
+```{r volume low mc}
+ftx %>% filter(coin_size == "low marketcap") %>% 
+  ggplot(aes(x = as.Date(date), y = volume)) + 
+  geom_line() +
+  facet_grid(coin~., scales = "free_y") + 
+  geom_vline(aes(xintercept = vertical_line_date), 
+             linetype = 2, 
+             color = "red", 
+             size = 0.5) +
+  ggtitle("Trends in Yearly Trading Volume (low marketcap)") + 
+  xlab("Date") +
+  ylab("Volume") +
+  theme(legend.position = "none",
+        axis.title.x = element_text(color="black",size=10),
+        axis.title.y = element_text(color="black", size=10),
+        axis.text.x = element_text(size=6),
+        axis.text.y = element_text(size=6),
+        plot.title = element_text(color = "black",
+                                  size=14))
+```
+
+In most of the high market coins there was large uptick in volume corresponding to a date on or around November 2nd (represented by the red dashed line). 
+
+## Conclusions
+
+Working together on a real data set provided an opportunity for our team to reflect on the skills that helped us along the way to completing this project. I believe it did give us a deeper understanding of what skills are most valued data science skills that can be applied to many scenarios.
+
+**Technical Skills**
+
+* SQL
+    + Database creation and management 
+    + Connecting to the DB from R to read in tables 
+* Sharing files in a GitHub repository
+* Coding in R
+    + Data transformation
+    + Data cleaning 
+    + Data visualization
+    
+**Soft skills** 
+
+* Collaboration 
+    + Strategized together to form a plan of action and identifying how the project would be broken up.
+* Communication 
+    + Creating a slack channel in order to efficiently communicate to plan, update team members on changes or progress and resolve any questions or issues. 
+
+
+
+
+
+
