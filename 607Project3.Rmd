@@ -9,6 +9,17 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+### Probem Statement
+
+
+This is a project for all the members of an assigned group to work on together, since being able to work effectively on a virtual team is a key “soft skill” for data scientists. 
+Use data to answer the question, “Which are the most valued data science skills?”
+Please note especially the requirement about making a presentation during the class meetup on the following Wednesday.
+
+Effective communication skill is essential for data scientists, and the ability to communicate the findings to team and explain what value these insights can bring to technical or non-technical stakeholders also are very important. 
+Curiosity is a trait that makes data science more interesting and beneficial. Being curious about business problems will let you to the solution as well.
+Team works in a team setting and being a team player is critical. We should always listen to their team members for their input and take into consideration to work as a team.
+
 
 ```{r load-package}
 library(RCurl)
@@ -24,10 +35,10 @@ conn <- dbConnect(MySQL(), user= "root", password = "M2max2023", dbname='MyDB1',
 ```{r DBMS}
 library(dplyr)
 library(ggplot2)
-cryto_dbms <- dbGetQuery(conn , 'select CryptoAbb, CryptoDesc, opening, highest, lowest, closing, volume, marketCap, theDate 
-from DailyPrices
-left join CryptoList
-on DailyPrices.CryptoAbb = CryptoList.CryptoName ')
+cryto_dbms <- dbGetQuery(conn , "select theDate,opening, opening, highest, lowest, closing, volume, marketcap, DailyPrice.CoinSymbol, coalesce(CoinDesc,'') CoinDesc
+from DailyPrice
+left join CoinList
+on DailyPrice.CoinSymbol = CoinList.CoinSymbol")
 glimpse(cryto_dbms)
 # Export the data frame to a CSV file local directory
 write.csv(cryto_dbms, "DATA 607 Group Project3.csv", row.names = FALSE)
@@ -36,34 +47,32 @@ cryptocurrencies <- read.csv("DATA 607 Group Project3.csv")
 head(cryptocurrencies)
 
 ```
+```{r monthly-volume}
+total_volume_in_month <- dbGetQuery(conn, "select theMonth, CoinSymbol, sum(volume) TotalVolumeInMonth
+from
+(
+select monthname(theDate) theMonth, CoinSymbol, volume 
+from DailyPrice
+where year(theDate) = 2021 and CoinSymbol in ('ADA', 'ETH') 
+) A
+group by theMonth, CoinSymbol;")
+total_volume_in_month
 
+```
+### What would be the total monthly volume of each coin in the year 2023?
+ 
 ```{r}
-cryto_dbms %>%
-count(CryptoDesc) # count number of coins types 
+cryptocurrencies %>%
+count(CoinSymbol) # count number of coins types 
 summary(cryto_dbms)
-filter(cryptocurrencies,CryptoAbb == "BTC", theDate == "2023-09-13")
 
-cryptocurrencies %>%
-  group_by(CryptoAbb)  %>%
-  ggplot(aes(x = theDate, y = marketCap, color = "red")) +
-  geom_line() +  # Use geom_line() for a line graph
-  ylim(-200, 200) +
-  facet_wrap(~CryptoAbb)
-
-
-cryptocurrencies %>%
-  group_by(CryptoDesc) %>%
-  mutate(coin_size = ifelse(mean(marketCap) > 517141000000, "high marketcap", "low marketcap")) %>%
-  filter(coin_size == "high marketcap") %>%
-  ggplot(aes(x = CryptoAbb, y = volume, color = "blue")) +  # Color should be a character string, e.g., "blue"
-  geom_point() +
-  ylim(-200, 200)
+filter(cryptocurrencies,CoinSymbol == "ADA", theDate == "2023-09-13")
 
 
 # Create the line graph
-ggplot(cryptocurrencies, aes(x = CryptoAbb, y = volume, group = CryptoAbb)) +
+ggplot(cryptocurrencies, aes(x = CoinSymbol, y = volume, group = CoinSymbol)) +
   geom_line() +
-  labs(x = "CryptoAbb", y = "volume") +
+  labs(x = "CoinSymbol", y = "volume") +
   theme_minimal()
 
 
@@ -82,7 +91,7 @@ print(missing_values)
 
 # Create box plots for numeric columns that you want to check
 numeric_columns <- cryptocurrencies %>%
-  select(opening, highest, lowest, closing, volume, marketCap)
+  select(opening, highest, lowest, closing, volume, marketcap)
 
 # Create a box plot for each numeric column
 for (col in names(numeric_columns)) {
@@ -99,64 +108,17 @@ for (col in names(numeric_columns)) {
 # Eg. Converting a date column to a standard format
 cryptocurrencies$theDate <- as.Date(cryptocurrencies$theDate, format = "%Y-%m-%d")
 head(cryptocurrencies$theDate)
+
 #Scaling Numerical Values
 # Eg. Scaling the "volume" column
 cryptocurrencies$volume <- scale(cryptocurrencies$volume)
 head(cryptocurrencies$volume)
 
-#Aggregating Data
+#Aggregating Data using (group_by)
 # Example: Aggregating data by CryptoDesc and calculating the mean marketCap
 aggregated_data <- cryptocurrencies %>%
-  group_by(CryptoDesc) %>%
-  summarize(mean_marketCap = mean(marketCap))
+  group_by(CoinSymbol) %>%
+  summarize(mean_marketcap = mean(marketcap))
 aggregated_data
-#Creating Time Series Features:
-# Example: Creating a lag feature for the "marketCap" column
-cryptocurrencies <- cryptocurrencies %>%
-  mutate(lagged_marketCap = lag(marketCap))
-cryptocurrencies
-
-#Text Data Processing
-library(tokenizers)
-# Example: Tokenizing text data in the "CryptoDesc" column
-cryptocurrencies$CryptoDesc <- unlist(tokenize_words(cryptocurrencies$CryptoDesc))
-
-```
-
-```{r visualization}
-#Line Graph for Cryptocurrency Prices Over Time:
-
-ggplot(data = cryptocurrencies, aes(x = theDate, y = closing, color = CryptoDesc)) +
-  geom_line() +
-  labs(title = "Cryptocurrency Prices Over Time", x = "Date", y = "Closing Price")
-
-#Bar Chart to Compare Cryptocurrency Trading Volumes:
-ggplot(data = cryptocurrencies, aes(x = CryptoAbb, y = volume)) +
-  geom_bar(stat = "identity") +
-  labs(title = "Cryptocurrency Trading Volumes", x = "Cryptocurrency Abbreviation", y = "Volume")
-
-#Scatter Plot for Relationship Between market capitalization vs. volume
-ggplot(data = cryptocurrencies, aes(x = marketCap, y = volume)) +
-  geom_point() +
-  labs(title = "Market Cap vs. Trading Volume", x = "Market Cap", y = "Volume")
-
-#Box Plot for Outlier Detection of market capitalization:
-
-ggplot(data = cryptocurrencies, aes(x = CryptoDesc, y = marketCap)) +
-  geom_boxplot() +
-  labs(title = "Distribution of Market Capitalization by Cryptocurrency", x = "Cryptocurrency", y = "Market Cap")
-
-#Time Series Plots:
-#Create time series plots to visualize the behavior of a single cryptocurrency over time.
-# Time series plot for a single cryptocurrency
-ggplot(data = cryptocurrencies[cryptocurrencies$CryptoAbb == "BTC", ], aes(x = theDate, y = closing)) +
-  geom_line() +
-  labs(title = "Bitcoin (BTC) Price Over Time", x = "Date", y = "Closing Price")
-#Histograms and Density Plots:
-#Visualize the distribution of a single numerical variable using histograms or density plots
-# Histogram of market capitalization
-ggplot(data = cryptocurrencies, aes(x = marketCap)) +
-  geom_histogram() +
-  labs(title = "Distribution of Market Capitalization", x = "Market Cap", y = "Frequency")
 
 ```
